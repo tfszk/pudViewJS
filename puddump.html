@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+#tbl {
+border-collapse: collapse;
+border: 1px solid #444;
+}
+#tbl td, #tbl th
+{
+border: 1px solid #444;
+padding: 0.2em;
+text-align: right;
+}
+
+</style
+</head>
+<body>
+<script src="./puddump.js"></script>
+<script src="threejs/three.js"></script>
+<script src="threejs/controls/OrbitControls.js"></script>
+<script src="./animate.js"></script>
+<script>
+function pud_dump() {
+    var file = document.getElementById('fnm').files[0];
+    var fr = new FileReader();
+    fr.addEventListener("loadend", function() {
+
+        var [hdr_names, data] = parse_pud(fr.result);
+        update_table(hdr_names, data, 'tbl');
+
+        var div = document.getElementById('canv');
+        if (div.childNodes.length > 0) div.removeChild(div.childNodes[0]);
+        exec_animation(div, data);
+    })
+    fr.readAsArrayBuffer(file)
+}
+
+function update_table(hdr_names, data, tag)
+{
+    var tbl = document.getElementById(tag);
+
+    while (tbl.childNodes.length > 0) {
+        tbl.removeChild(tbl.childNodes[0])
+    }
+
+    var tr = document.createElement('tr')
+
+    for (var i=0; i<hdr_names.length; i++) {
+        var nm = hdr_names[i]
+        var td = document.createElement('th')
+        td.textContent = nm
+        tr.appendChild(td)
+    }
+
+    tbl.appendChild(tr)
+
+    for (var r=0; r<data.length; r++) {
+        var rec = data[r]
+        var tr = document.createElement('tr')
+        for (var i=0; i<hdr_names.length; i++) {
+            var nm = hdr_names[i]
+            var td = document.createElement('td')
+            td.textContent = rec[nm]
+            tr.appendChild(td)
+        }
+        tbl.appendChild(tr)
+    }
+}
+
+</script>
+<input id="fnm" type="file" value="./test_pud"></input>
+<button onclick="pud_dump();">load</button>
+<div id='canv'></div>
+<table id="tbl">
+</table>
+</body>
+</html>
+
