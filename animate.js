@@ -15,10 +15,12 @@ function exec_animation(elem, dataAry)
     // Object
     // var geometry = new THREE.RingGeometry(0.5, 1);
     // var geometry = new THREE.ConeGeometry(1, 2, 4);
-    var geometry = new THREE.TorusGeometry(0.8, 0.3, 8, 6, Math.PI*2*0.8);
-    var material = new THREE.MeshLambertMaterial( {color: 0x0fff0f} );
-    var device   = new THREE.Mesh(geometry, material);
-    device.rotation.x  = Math.PI / 2;
+    // var geometry = new THREE.TorusGeometry(0.8, 0.3, 8, 6, Math.PI*2*0.8);
+    // var material = new THREE.MeshLambertMaterial( {color: 0x0fff0f} );
+    // var device   = new THREE.Mesh(geometry, material);
+    // device.rotation.x  = Math.PI / 2;
+
+    var device;
 
     // Trace Line
     var positions = new Float32Array(dataAry.length * 3);
@@ -59,7 +61,7 @@ function exec_animation(elem, dataAry)
     scene.background = new THREE.Color( 0xffffff );
     scene.add(line);
     scene.add(grid);
-    scene.add(device);
+    // scene.add(device);
     // scene.add(plane);
 	scene.add(light);
 
@@ -100,7 +102,22 @@ function exec_animation(elem, dataAry)
         }
     }
 
-    animate();
+    // 
+    //  Load Model, then Start Animation
+    // 
+    var callbackOnLoad = function (event) {
+        device = event.detail.loaderRootNode;
+        device.rotation.y  = Math.PI / 2;
+        device.scale.x = 2;
+        device.scale.y = 2;
+        device.scale.z = 2;
+	    scene.add(event.detail.loaderRootNode);
+        animate();
+    };
+
+    var loader = new THREE.OBJLoader2();
+    // load a resource from provided URL synchronously
+    loader.load( 'drone.obj', callbackOnLoad, null, null, null, true);
 }
 
 function interpolate_set(dataAry, tm, idx, device)
@@ -128,15 +145,19 @@ function interpolate_set(dataAry, tm, idx, device)
     if (psi1 > 0 && psi2 > 0 || psi1 < 0 && psi2 < 0 ) {
     } else {
         if (psi1 < -Math.PI/2 && psi2 > Math.PI/2) {
-            psi1 = (psi1 + Math.PI*2)
+            psi1 = (psi1 + Math.PI*2);
         } else if (psi2 < -Math.PI/2 && psi1 > Math.PI/2) {
-            psi2 = (psi2 + Math.PI*2)
+            psi2 = (psi2 + Math.PI*2);
         }
     }
 
     // Torus
-    device.rotation.z = (psi2*(1-a) + psi1*a) - Math.PI/2 + Math.PI*2*0.2/2;
+    //device.rotation.z = (psi2*(1-a) + psi1*a) - Math.PI/2 + Math.PI*2*0.2/2;
     // Cone
     // device.rotation.z = (psi2*(1-a) + psi1*a)
+    // DroneModel
+    device.rotation.y = 2*Math.PI - ((psi2*(1-a) + psi1*a));
+    device.rotation.x = -(rec2['angle_theta']*(1-a) + rec1['angle_theta']);
+    device.rotation.z = -(rec2['angle_phi']*(1-a) + rec1['angle_phi']*a);
 }
 
