@@ -24,6 +24,8 @@ text-align: right;
 <script src="threejs/controls/OrbitControls.js"></script>
 <script src="./animate.js"></script>
 <script>
+
+
 function pud_dump() {
     var file = document.getElementById('fnm').files[0];
     var fr = new FileReader();
@@ -34,7 +36,7 @@ function pud_dump() {
 
         var div = document.getElementById('canv');
         if (div.childNodes.length > 0) div.removeChild(div.childNodes[0]);
-        exec_animation(div, data);
+        exec_animation(div, data, frame_cb);
     })
     fr.readAsArrayBuffer(file)
 }
@@ -71,9 +73,56 @@ function update_table(hdr_names, data, tag)
     }
 }
 
+var req_mod = 0;
+var req_idx = 0;
+var req_chg_view = 0;
+
+function frame_cb(ctrl, device)
+{
+    var tm  = ctrl['tm'];
+    var idx = ctrl['idx'];
+
+    var tmstr = Math.round(tm);
+    var str;
+    str = idx + " " +
+          "x:" + Math.round(device.position.x * 100) + " " +
+          "y:" + Math.round(device.position.y * 100) + " " +
+          "z:" + Math.round(device.position.z * 100) + " " +
+          "p:" + Math.round(device.rotation.x * 180 / Math.PI) + " " +
+          "y:" + Math.round(device.rotation.y * 180 / Math.PI) + " " +
+          "r:" + Math.round(device.rotation.z * 180 / Math.PI);
+    document.getElementById('tm').textContent = tmstr;
+    document.getElementById('idx').textContent = str;
+
+    ctrl['mode'] = req_mod;
+
+    if (req_mod == 1) {
+        ctrl['idx'] = req_idx;
+    } else {
+        req_idx = idx;
+    }
+
+    if (req_chg_view != 0) {
+        ctrl['req_chg_view'] = 1;
+        req_chg_view = 0;
+    }
+}
+
+function auto_idx() { req_mod=0; }
+function next_idx() { req_mod=1; req_idx++; }
+function prev_idx() { req_mod=1; req_idx--; if (req_idx < 0) req_idx = 0; }
+function chg_view() { req_chg_view=1; }
+
+
 </script>
 <input id="fnm" type="file" value="./test_pud"></input>
 <button onclick="pud_dump();">load</button>
+<div>Time:<span id="tm"></span></div>
+<div>Index:<span id="idx"></span></div>
+<button onclick="auto_idx();">AutoRun</button>
+<button onclick="prev_idx();">Step Prev</button>
+<button onclick="next_idx();">Step Next</button>
+<button onclick="chg_view();">ChgView</button>
 <div id='canv'></div>
 <table id="tbl">
 </table>

@@ -3,7 +3,10 @@
 // using three.js, webgl framework
 //
 
-function exec_animation(elem, dataAry)
+var fov = 90;
+var tm_scl = 1.0;
+
+function exec_animation(elem, dataAry, frame_cb)
 {
     // Renderer
     var renderer = new THREE.WebGLRenderer();
@@ -67,13 +70,18 @@ function exec_animation(elem, dataAry)
 
     // Camera
 	var cam   = new THREE.PerspectiveCamera(
-                75, window.innerWidth / window.innerHeight, 0.1, 200
+                fov, window.innerWidth / window.innerHeight, 0.1, 200
                 );
+	//var cam   = new THREE.OrthographicCamera(
+    //            -10,  10,
+    //             10, -10, 0.1, 500
+    //            );
+
     cam.position.set(20, 20, 20);
     cam.lookAt(new THREE.Vector3(0, 0, 0));
 
     // Orbit Controller
-    var controls = new THREE.OrbitControls(cam);
+    var orbitctrl = new THREE.OrbitControls(cam);
 
     // 
     // animation
@@ -84,21 +92,60 @@ function exec_animation(elem, dataAry)
 
     var clk = new THREE.Clock();
 
+    var mode = 0;
+
+    var ctrl = {
+        mode: 1,
+        idx:  0,
+        tm:   0,
+    };
+
     function animate() {
         requestAnimationFrame(animate);
         renderer.render(scene, cam);
 
-        var tm = clk.getElapsedTime() * 1000;
-        while (idx < dataAry.length && tm > dataAry[idx]['time']) {
-            idx++;
+        var tm;
+        var idx = ctrl['idx'];
+
+        if (ctrl['mode'] == 0) {
+            tm = clk.getElapsedTime() * 1000 * tm_scl;
+            while (idx < dataAry.length && tm > dataAry[idx]['time']) {
+                idx++;
+            }
+        } else {
+            tm = dataAry[idx]['time'];
         }
+
+        ctrl['idx'] = idx;
+        ctrl['tm']  = tm;
         
-        if (idx >= dataAry.length) {
-            idx = 0;
+        if (ctrl['idx'] >= dataAry.length) {
+            ctrl['idx'] = 0;
             clk.stop();
             clk.start();
         } else {
             interpolate_set(dataAry, tm, idx, device);
+        }
+
+        if (orbitctrl.enabled == false) {
+            cam.position.set(device.position.x, device.position.y+1.0, device.position.z);
+            cam.rotation.set(device.rotation.x, device.rotation.y, device.rotation.z);
+            cam.updateMatrix();
+            cam.rotateX(45 * Math.PI / 180);
+            cam.rotateY(180 * Math.PI / 180);
+        }
+
+        if (frame_cb) {
+            frame_cb(ctrl, device);
+        }
+
+        if (ctrl['req_chg_view'] == 1) {
+            if (orbitctrl.enabled) {
+                orbitctrl.enabled = false;
+            } else {
+                orbitctrl.enabled = true;
+            }
+            ctrl['req_chg_view'] = 0;
         }
     }
 
@@ -108,9 +155,9 @@ function exec_animation(elem, dataAry)
     var callbackOnLoad = function (event) {
         device = event.detail.loaderRootNode;
         device.rotation.y  = Math.PI / 2;
-        device.scale.x = 2;
-        device.scale.y = 2;
-        device.scale.z = 2;
+        device.scale.x = 0.25;
+        device.scale.y = 0.25;
+        device.scale.z = 0.25;
 	    scene.add(event.detail.loaderRootNode);
         animate();
     };
@@ -130,7 +177,11 @@ function interpolate_set(dataAry, tm, idx, device)
     } else {
         rec1 = dataAry[idx-1];
         rec2 = dataAry[idx];
-        a = (rec2['time'] - tm) / (rec2['time'] - rec1['time']);
+        if (rec2['time'] != rec1['time']) {
+            a = (rec2['time'] - tm) / (rec2['time'] - rec1['time']);
+        } else {
+            a = 1.0;
+        }
     }
 
     if (a < 0.0) a = 0.0;
@@ -142,7 +193,7 @@ function interpolate_set(dataAry, tm, idx, device)
 
     var psi1 = rec1['angle_psi'];
     var psi2 = rec2['angle_psi'];
-    if (psi1 > 0 && psi2 > 0 || psi1 < 0 && psi2 < 0 ) {
+    if ((psi1 > 0 && psi2 > 0) || (psi1 < 0 && psi2 < 0)) {
     } else {
         if (psi1 < -Math.PI/2 && psi2 > Math.PI/2) {
             psi1 = (psi1 + Math.PI*2);
@@ -151,13 +202,18 @@ function interpolate_set(dataAry, tm, idx, device)
         }
     }
 
+    var phi1 = rec1['angle_phi'];
+    var phi2 = rec2['angle_phi'];
+    var the1 = rec1['angle_theta'];
+    var the2 = rec2['angle_theta'];
+
     // Torus
     //device.rotation.z = (psi2*(1-a) + psi1*a) - Math.PI/2 + Math.PI*2*0.2/2;
     // Cone
     // device.rotation.z = (psi2*(1-a) + psi1*a)
     // DroneModel
-    device.rotation.y = 2*Math.PI - ((psi2*(1-a) + psi1*a));
-    device.rotation.x = -(rec2['angle_theta']*(1-a) + rec1['angle_theta']);
-    device.rotation.z = -(rec2['angle_phi']*(1-a) + rec1['angle_phi']*a);
+    device.rotation.y = -((psi2*(1-a) + psi1*a));
+    device.rotation.x = -(the2*(1-a) + the1*a);
+    device.rotation.z = -(phi2*(1-a) + phi1*a);
 }
 
